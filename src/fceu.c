@@ -22,8 +22,10 @@
 #include  <stdio.h>
 #include  <stdlib.h>
 #include  <stdarg.h>
+#include  <sys/mman.h>
+#include  <fcntl.h>
 
-#include "fceu.h"
+#include  "fceu.h"
 #include  "fceu-types.h"
 #include  "x6502.h"
 #include  "fceu.h"
@@ -154,12 +156,7 @@ void FASTAPASS(3) SetWriteHandler(int32 start, int32 end, writefunc func)
 			BWrite[x] = func;
 }
 
-#ifdef COPYFAMI
-uint8 RAM[0x4000];
-#else
-uint8 RAM[0x800];
-#endif
-
+uint8 *RAM = NULL;
 uint8 PAL = 0;
 
 static DECLFW(BRAML)
@@ -333,8 +330,32 @@ FCEUGI *FCEUI_CopyFamiStart(void)
 }
 
 int FCEUI_Initialize(void) {
+
+    // Setup a block of shared memory as our RAM buffer for emulation. Note this
+    // init function may be called several times during run-time, but we only
+    // want to allocate memory once.
+    if (RAM == NULL) {
+	int fd = shm_open(RAM_SHM_PATH, O_RDWR|O_CREAT, 0700);
+	if (fd == -1) {
+	    FCEU_PrintError("shm_open failed\n");
+	    return 0;
+	}
+
+	if (ftruncate(fd, RAMSIZE) == -1) {
+	    FCEU_PrintError("ftruncate failed\n");
+	    return 0;
+	}
+
+	RAM = mmap(NULL, RAMSIZE, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+	if (RAM == NULL) {
+	    FCEU_PrintError("mmap failed\n");
+	    return 0;
+	}
+    }
+
 	if (!FCEU_InitVirtualVideo())
 		return 0;
+	
 	memset(&FSettings, 0, sizeof(FSettings));
 	FSettings.UsrFirstSLine[0] = 8;
 	FSettings.UsrFirstSLine[1] = 0;
@@ -344,6 +365,13 @@ int FCEUI_Initialize(void) {
 	FCEUPPU_Init();
 	X6502_Init();
 	return 1;
+}
+
+void FCEUI_Cleanup(void) {
+    if (RAM != NULL) {
+	shm_unlink(RAM_SHM_PATH);
+	RAM = NULL;
+    }
 }
 
 void FCEUI_Kill(void) {

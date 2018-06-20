@@ -780,6 +780,7 @@ void retro_deinit (void)
    FCEUI_CloseGame();
    FCEUI_Sound(0);
    FCEUI_Kill();
+   FCEUI_Cleanup();
 #if defined(_3DS)
    linearFree(fceu_video_out);
 #else

@@ -57,7 +57,7 @@ LIBM :=
 else
 LIBM := -lm
 endif
-LIBS :=
+LIBS := -lrt
 
 # Unix
 ifeq ($(platform), unix)

@@ -53,6 +53,11 @@ extern SFORMAT FCEUPPU_STATEINFO[];
 extern SFORMAT FCEUSND_STATEINFO[];
 extern SFORMAT FCEUCTRL_STATEINFO[];
 
+// This is a bit of a hack. Since RAM is now dynamically allocated via
+// shm_open/mmap, that symbol can't be included in this global table.
+// Instead we use an in-between buffer to make things work.
+uint8 TEMP_RAM[RAMSIZE];
+
 SFORMAT SFCPU[] = {
    { &X.PC, 2 | RLSB, "PC\0" },
    { &X.A, 1, "A\0\0" },
@@ -61,11 +66,7 @@ SFORMAT SFCPU[] = {
    { &X.S, 1, "S\0\0" },
    { &X.P, 1, "P\0\0" },
    { &X.DB, 1, "DB"},
-#ifdef COPYFAMI
-   { RAM, 0x4000, "RAM" },
-#else
-   { RAM, 0x800, "RAM" },
-#endif
+   { TEMP_RAM, RAMSIZE, "RAM" },
    { 0 }
 };
 
@@ -209,6 +210,10 @@ static int ReadStateChunks(memstream_t *st, int32 totalsize)
          case 1:
             if (!ReadStateChunk(st, SFCPU, size))
                ret = 0;
+	    else {
+		// Restore the saved RAM buffer
+		memcpy(RAM, TEMP_RAM, RAMSIZE);
+	    }
             break;
          case 2:
             if (!ReadStateChunk(st, SFCPUC, size))
@@ -258,6 +263,9 @@ void FCEUSS_Save_Mem(void)
 
    FCEU_en32lsb(header + 8, FCEU_VERSION_NUMERIC);
    memstream_write(mem, header, 16);
+
+   // Copy RAM into our temp buffer (which is part of SFCPU)
+   memcpy(TEMP_RAM, RAM, RAMSIZE);
 
    FCEUPPU_SaveState();
    totalsize  = WriteStateChunk(mem, 1, SFCPU);

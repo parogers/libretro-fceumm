@@ -144,6 +144,8 @@ FCEUGI *FCEUI_LoadGame(const char *name);
 FCEUGI *FCEUI_CopyFamiStart();
 #endif
 
+int FCEUI_PreInit(void);
+
 /* allocates memory.  0 on failure, 1 on success. */
 int FCEUI_Initialize(void);
 

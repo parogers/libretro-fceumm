@@ -56,10 +56,15 @@ extern uint8 MMC5HackSPScroll;
 extern uint8 MMC5HackSPPage;
 
 #ifdef COPYFAMI
-extern uint8 RAM[0x4000];
+#define RAMSIZE 0x4000
 #else
-extern uint8 RAM[0x800];
+#define RAMSIZE 0x800
 #endif
+
+// Path to RAM shared memory (passed into shm_open)
+#define RAM_SHM_PATH "/fceu-shm"
+
+extern uint8 *RAM;
 
 extern readfunc ARead[0x10000];
 extern writefunc BWrite[0x10000];
